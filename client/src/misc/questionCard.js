@@ -2,21 +2,30 @@ import { IoSend } from "react-icons/io5";
 import CommentCard from "./commentCard";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { AiOutlineLike, AiFillLike} from "react-icons/ai";
+import { MdOutlineComment } from "react-icons/md";
+import { UserContext } from "../App";
+import { useContext } from "react";
 export default function QuestionCard({
 questionData
 }){
+    const userContext = useContext(UserContext);
     const [viewComments,setViewComments] = useState(false);
     const [question,setQuestion] = useState('');
     const [tag,setTag] = useState('');
     const [email,setEmail] = useState('');
+    const [likeData,setLikeData] = useState([]);
     const [commentData,setCommentData] = useState([]);
+    const [showLikes,setShowLikes] = useState(false);
     const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
     useEffect(()=>{
         if(questionData)
         {
+            // console.log(questionData)
             setQuestion(questionData.question);
             setTag(questionData.tag);
             setEmail(questionData.email);
+            setLikeData(questionData.likedBy);
         }
     },[questionData])
     const handleViewComment = ()=>{
@@ -43,7 +52,6 @@ questionData
                     Authorization: `Bearer ${jwtToken}`, 
                 }
             });
-            console.log(response.data);
             setCommentData(response.data);
         } catch (e) {
             console.error(e);
@@ -82,6 +90,40 @@ questionData
         }
 
     }
+    const handleLike = async ()=>{
+        try{
+            const jwtToken = document.cookie
+            .split('; ')
+            .find((row) => row.startsWith('authToken='))
+            ?.split('=')[1];
+
+            if (!jwtToken) {
+                alert('User is not authenticated');
+                return;
+            }
+            const requestBody = {
+                questionID: questionData._id
+            }
+            const res = await axios.post(`${BACKEND_URL}/questions/like_unlike`,requestBody,
+                {headers: {
+                    Authorization: `Bearer ${jwtToken}`, 
+                }}
+            )
+            setLikeData(prevLikes => {
+                
+                if (prevLikes.includes(userContext.email)) {
+                    return prevLikes.filter(email => email !== userContext.email);
+                } else {
+                    return [...prevLikes, userContext.email];
+                }
+            });
+            
+        }
+        catch(e)
+        {
+            console.log(e);
+        }
+    }
     return (
         <div className="w-[400px] flex flex-col gap-4">
         <div className="rounded flex flex-col gap-2 bg-green-500 shadow-md">
@@ -96,9 +138,41 @@ questionData
                 #{tag}
                 </div>
             </div>
-            <div className="flex outlin text-sm">
-                <div onClick={handleViewComment} className="w-full p-2 flex items-center justify-center hover:bg-green-600 transition-all cursor-pointer">
-                    View Comments
+            { likeData.length?<div className="relative px-2 text-xs flex gap-1 items-center">
+                <AiFillLike/>
+                <div onMouseEnter={()=>{
+                    setShowLikes(true);
+                }} onMouseLeave={()=>{
+                    setShowLikes(false);
+                }} className="font-semibold hover:underline cursor-pointer transition-all">
+                    {likeData.length} likes
+                </div>
+                {showLikes && <div className="flex flex-col absolute top-full py-1 px-2 rounded-sm backdrop:blur-sm text-white bg-[#343434d1]">
+                    {
+                        likeData.map(email=>{
+                            return <div>{email}</div>;
+                        })
+                    }
+                </div>}
+                
+
+            </div>:<></>}
+            <div className="flex text-sm justify-center items-center">
+                <div onClick={handleLike} className="gap-1 cursor-pointer hover:bg-green-600 transition-all w-full border-green-600 border-r-2 p-2 flex items-center justify-center">
+                    <div className="">
+                        {likeData.includes(userContext.email)?<AiFillLike/>:<AiOutlineLike/>}
+                    </div>
+                    <div className="">
+                        {likeData.includes(userContext.email)?'Liked':'Like'}
+                    </div>
+                </div>
+                <div onClick={handleViewComment} className="w-full gap-1 p-2 flex items-center justify-center hover:bg-green-600 transition-all cursor-pointer">
+                    <div className="">
+                        <MdOutlineComment/>
+                    </div>
+                    <div>
+                        Comment
+                    </div>
                 </div>
             </div>
         </div>
